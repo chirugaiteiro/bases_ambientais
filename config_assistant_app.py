@@ -5,16 +5,26 @@ import pandas as pd
 import json
 import requests
 import sys
+import os # Novo import
 
-# Ajustar o path para poder importar config e utils
-# Supondo que config.py e utils.py estão no mesmo diretório ou acessíveis via PYTHONPATH
+# --- AJUSTE DE PATH PARA IMPORTAÇÃO ---
+# Adiciona o diretório atual (onde config.py e utils.py deveriam estar) ao sys.path
+try:
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    if current_dir not in sys.path:
+        sys.path.append(current_dir)
+except NameError:
+    # Fallback caso __file__ não esteja definido (ex: em alguns ambientes interativos)
+    if os.getcwd() not in sys.path:
+        sys.path.append(os.getcwd())
+# ------------------------------------
+
 try:
     # Tenta importar os módulos
-    # Se estiver rodando como app separado, pode precisar de um ajuste no sys.path
     from config import TODAS_AS_BASES 
     from utils import coletar_atributos_de_todas_bases
-except ImportError:
-    st.error("Erro de Importação: Certifique-se de que 'config.py' e 'utils.py' estão no mesmo diretório do 'config_assistant_app.py' ou no seu PYTHONPATH.")
+except ImportError as e:
+    st.error(f"Erro de Importação. Por favor, verifique se 'config.py' e 'utils.py' estão no mesmo diretório ou se as dependências foram instaladas: {e}")
     st.stop()
 
 
