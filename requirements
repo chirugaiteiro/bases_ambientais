@@ -1,0 +1,14 @@
+streamlit
+geopandas
+requests
+shapely
+folium
+streamlit-folium
+matplotlib
+Fiona
+Pillow
+fpdf2
+streamlit-modal
+pyproj
+rtree
+six
