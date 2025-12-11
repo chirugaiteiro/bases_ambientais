@@ -29,9 +29,21 @@ URL_HIDRO_OFFLINE = "https://github.com/chirugaiteiro/bases_ambientais/raw/refs/
 URL_AUTEX_IBAMA = "https://github.com/chirugaiteiro/bases_ambientais/raw/refs/heads/main/Dados_Agrupados_QGIS.zip"
 
 # --- LISTAS DE BASES ---
+
 BASES_ADMINISTRATIVAS = [
     {"nome": "Municípios MS", "url": "https://www.pinms.ms.gov.br/arcgis/rest/services/SEMADESC/SEMADESC_MAPAS/MapServer/38/query", "tipo": "poligono"},
     {"nome": "Biomas em MS", "url": "https://www.pinms.ms.gov.br/arcgis/rest/services/IMASUL/lim_biomas_atual/MapServer/0/query", "tipo": "poligono"}
+]
+
+# --- NOVAS BASES: CAR (IMASUL) ---
+BASES_CAR = [
+    {"nome": "CAR - Limite da Propriedade", "url": "https://www.pinms.ms.gov.br/arcgis/rest/services/IMASUL/car_lim_propriedade/FeatureServer/8/query", "tipo": "poligono"},
+    {"nome": "CAR - Uso Restrito", "url": "https://www.pinms.ms.gov.br/arcgis/rest/services/IMASUL/car_uso_restrito/FeatureServer/3/query", "tipo": "poligono"},
+    {"nome": "CAR - Uso Consolidado", "url": "https://www.pinms.ms.gov.br/arcgis/rest/services/IMASUL/car_uso_consolidado/FeatureServer/4/query", "tipo": "poligono"},
+    {"nome": "CAR - Servidão Administrativa", "url": "https://www.pinms.ms.gov.br/arcgis/rest/services/IMASUL/car_servidao_adm/FeatureServer/5/query", "tipo": "poligono"},
+    {"nome": "CAR - Reserva Legal", "url": "https://www.pinms.ms.gov.br/arcgis/rest/services/IMASUL/car_reserva_legal/FeatureServer/6/query", "tipo": "poligono"},
+    {"nome": "CAR - Remanescente Veg. Nativa", "url": "https://www.pinms.ms.gov.br/arcgis/rest/services/IMASUL/car_remanescente_veg_nativa/FeatureServer/7/query", "tipo": "poligono"},
+    {"nome": "CAR - Áreas de Preservação Permanente (APP)", "url": "https://www.pinms.ms.gov.br/arcgis/rest/services/IMASUL/car_app/FeatureServer/9/query", "tipo": "poligono"}
 ]
 
 BASES_GERAIS = [
@@ -73,6 +85,7 @@ BASES_ZIP_GITHUB = [
 # Agrupamento para as abas
 CATEGORIAS = {
     "Administrativas": BASES_ADMINISTRATIVAS,
+    "CAR (Sicar/MS)": BASES_CAR,  # <--- NOVA CATEGORIA ADICIONADA AQUI
     "Restrições Gerais": BASES_GERAIS,
     "Hidrografia (Online)": BASES_HIDRO,
     "Fiscalização": BASES_FISCALIZACAO,
@@ -105,6 +118,7 @@ def fetch_rest_wfs_attributes(layer_config):
                 "resultRecordCount": 5,
                 "returnGeometry": "false"
             }
+            # Garante que termina com /query se não tiver
             if not url.endswith("query"):
                 url = url.rstrip("/") + "/query"
                 
