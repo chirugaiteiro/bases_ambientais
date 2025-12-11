@@ -19,6 +19,11 @@ st.set_page_config(layout="wide", page_title="Configurador de Bases Mutum")
 # Silencia o aviso de "InsecureRequestWarning"
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
+# Cabeçalho para simular um navegador real (evita erro 403/503 no GitHub)
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+}
+
 # ==============================================================================
 # 1. DADOS DE CONFIGURAÇÃO
 # ==============================================================================
@@ -80,7 +85,7 @@ BASES_GITHUB = [
     {"nome": "Focos Históricos (INPE - ZIP)", "url": URL_GEOJSON_GITHUB, "tipo_fonte": "ZIP"},
     {"nome": "Hidrografia MS (Offline - ZIP)", "url": URL_HIDRO_OFFLINE, "tipo_fonte": "ZIP"},
     {"nome": "Dados Agrupados (Autex - ZIP)", "url": URL_AUTEX_IBAMA, "tipo_fonte": "ZIP"},
-    {"nome": "Dados Convertidos (Parquet)", "url": URL_PARQUET_CONVERTED, "tipo_fonte": "PARQUET"} # <--- NOVA BASE AQUI
+    {"nome": "Dados Convertidos (Parquet)", "url": URL_PARQUET_CONVERTED, "tipo_fonte": "PARQUET"}
 ]
 
 CATEGORIAS = {
@@ -109,7 +114,7 @@ def fetch_rest_wfs_attributes(layer_config):
         if tipo == "REST":
             params = {"where": "1=1", "outFields": "*", "f": "json", "resultRecordCount": 5, "returnGeometry": "false"}
             if not url.endswith("query"): url = url.rstrip("/") + "/query"
-            r = requests.get(url, params=params, timeout=15, verify=False)
+            r = requests.get(url, params=params, headers=HEADERS, timeout=15, verify=False)
             if r.status_code == 200:
                 features = r.json().get("features", [])
                 if features: data_attributes = random.choice(features).get("attributes", {})
@@ -119,7 +124,7 @@ def fetch_rest_wfs_attributes(layer_config):
         # --- LÓGICA WFS ---
         elif tipo == "WFS":
             params = {"service": "WFS", "version": "1.1.0", "request": "GetFeature", "typeName": layer_config.get("layer_name"), "outputFormat": "application/json", "maxFeatures": 5}
-            r = requests.get(url, params=params, timeout=30, verify=False)
+            r = requests.get(url, params=params, headers=HEADERS, timeout=30, verify=False)
             if r.status_code == 200:
                 try:
                     features = r.json().get("features", [])
@@ -132,38 +137,45 @@ def fetch_rest_wfs_attributes(layer_config):
     except Exception as e: return {"ERRO": str(e)}
 
 @st.cache_data(ttl=3600, show_spinner=False)
-def fetch_zip_attributes(url):
-    """Baixa ZIP, extrai e lê Shapefile/GeoJSON com Geopandas."""
+def fetch_zip_attributes(url, uploaded_file=None):
+    """Baixa ZIP ou usa arquivo enviado, extrai e lê Shapefile/GeoJSON com Geopandas."""
     try:
-        r = requests.get(url, timeout=60, verify=False)
-        if r.status_code != 200: return {"ERRO": f"Falha download (Status: {r.status_code})"}
+        # Se usuário enviou arquivo manualmente, usa ele
+        if uploaded_file:
+            zip_file_object = uploaded_file
+        else:
+            r = requests.get(url, headers=HEADERS, timeout=60, verify=False)
+            if r.status_code != 200: return {"ERRO": f"Falha download (Status: {r.status_code})"}
+            zip_file_object = io.BytesIO(r.content)
         
         with tempfile.TemporaryDirectory() as temp_dir:
-            with zipfile.ZipFile(io.BytesIO(r.content), 'r') as zf: zf.extractall(temp_dir)
+            with zipfile.ZipFile(zip_file_object, 'r') as zf: zf.extractall(temp_dir)
             files = [f for f in os.listdir(temp_dir) if f.endswith(('.shp', '.geojson'))]
             if not files: return {"ERRO": "Nenhum .shp/.geojson no ZIP."}
             
             gdf = gpd.read_file(os.path.join(temp_dir, files[0]))
             if gdf.empty: return {"AVISO": "Arquivo vazio."}
             
-            # Amostra e converte para dict seguro
             return {k: str(v) for k, v in gdf.sample(1).iloc[0].drop('geometry', errors='ignore').to_dict().items()}
-    except Exception as e: return {"ERRO": f"ZIP falhou: {str(e)}"}
+    except Exception as e: return {"ERRO": f"Erro ZIP: {str(e)}"}
 
 @st.cache_data(ttl=3600, show_spinner=False)
-def fetch_parquet_attributes(url):
+def fetch_parquet_attributes(url, uploaded_file=None):
     """Baixa e lê arquivo PARQUET (requer engine pyarrow)."""
     try:
-        r = requests.get(url, timeout=60, verify=False)
-        if r.status_code != 200: return {"ERRO": f"Falha download (Status: {r.status_code})"}
+        # Se usuário enviou arquivo manualmente
+        if uploaded_file:
+            file_object = uploaded_file
+        else:
+            r = requests.get(url, headers=HEADERS, timeout=60, verify=False)
+            if r.status_code != 200: return {"ERRO": f"Falha download (Status: {r.status_code})"}
+            file_object = io.BytesIO(r.content)
         
-        # Lê o parquet da memória
-        with io.BytesIO(r.content) as f:
-            df = pd.read_parquet(f)
+        # Lê o parquet
+        df = pd.read_parquet(file_object)
             
         if df.empty: return {"AVISO": "Parquet vazio."}
         
-        # Pega amostra, remove geometria se existir e converte para string
         sample = df.sample(1).iloc[0]
         if 'geometry' in sample: sample = sample.drop('geometry')
         
@@ -172,7 +184,7 @@ def fetch_parquet_attributes(url):
     except ImportError:
         return {"ERRO": "Biblioteca 'pyarrow' não instalada. Instale com pip install pyarrow"}
     except Exception as e:
-        return {"ERRO": f"Parquet falhou: {str(e)}"}
+        return {"ERRO": f"Erro Parquet: {str(e)}"}
 
 # ==============================================================================
 # 3. INTERFACE STREAMLIT
@@ -190,21 +202,40 @@ for i, (cat_name, layers) in enumerate(CATEGORIAS.items()):
         st.header(cat_name)
         for layer in layers:
             with st.expander(f"📍 {layer['nome']}", expanded=False):
+                # Botão de carregar
                 if st.button("Carregar Amostra", key=f"btn_{layer['nome']}"):
                     st.session_state[f"load_{layer['nome']}"] = True
 
+                # Estado de carregamento ativado
                 if st.session_state.get(f"load_{layer['nome']}", False):
-                    with st.spinner("Baixando dados..."):
+                    amostra = {}
+                    
+                    # 1. Tenta baixar automaticamente
+                    with st.spinner("Conectando..."):
                         tipo = layer.get("tipo_fonte", "REST")
                         if tipo == "ZIP": amostra = fetch_zip_attributes(layer["url"])
-                        elif tipo == "PARQUET": amostra = fetch_parquet_attributes(layer["url"]) # <--- LÓGICA NOVA
+                        elif tipo == "PARQUET": amostra = fetch_parquet_attributes(layer["url"])
                         else: amostra = fetch_rest_wfs_attributes(layer)
-                    
-                    if "ERRO" in amostra: st.error(amostra["ERRO"])
-                    elif "AVISO" in amostra: st.warning(amostra["AVISO"])
-                    else:
+
+                    # 2. Se der ERRO, mostra opção de Upload Manual (Fallback)
+                    if "ERRO" in amostra:
+                        st.error(f"Não foi possível baixar automaticamente: {amostra['ERRO']}")
+                        st.markdown("**Solução Alternativa:** Se você tiver o arquivo no seu computador, arraste-o abaixo:")
+                        
+                        # Define tipo de arquivo aceito
+                        f_types = ["parquet"] if tipo == "PARQUET" else ["zip"]
+                        uploaded = st.file_uploader(f"Upload manual ({layer['nome']})", type=f_types, key=f"up_{layer['nome']}")
+                        
+                        if uploaded:
+                            with st.spinner("Lendo arquivo enviado..."):
+                                if tipo == "ZIP": amostra = fetch_zip_attributes(None, uploaded)
+                                elif tipo == "PARQUET": amostra = fetch_parquet_attributes(None, uploaded)
+
+                    # 3. Exibe Tabela se tiver dados válidos (do download ou do upload)
+                    if amostra and "ERRO" not in amostra and "AVISO" not in amostra:
                         df_data = []
                         saved_conf = st.session_state["final_config"].get(layer["nome"], {})
+                        
                         for k, v in amostra.items():
                             df_data.append({
                                 "Campo Original": k,
@@ -230,6 +261,9 @@ for i, (cat_name, layers) in enumerate(CATEGORIAS.items()):
                             mapping = {row["Campo Original"]: (row["Nome no App (Alias)"] or row["Campo Original"].capitalize()) for _, row in sel.iterrows()}
                             st.session_state["final_config"][layer["nome"]] = mapping
                             st.success(f"Salvo: {len(mapping)} colunas.")
+                            
+                    elif "AVISO" in amostra:
+                        st.warning(amostra["AVISO"])
 
 with tabs[-1]:
     st.header("JSON Final")
