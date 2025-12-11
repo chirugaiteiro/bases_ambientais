@@ -3,3 +3,4 @@ pandas
 requests
 geopandas
 fiona
+pyarrow
