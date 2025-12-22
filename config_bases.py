@@ -179,7 +179,7 @@ BASES_GERAIS = [
     {
         "nome": "Certificação INCRA - SNCI", 
         "url": "https://www.pinms.ms.gov.br/arcgis/rest/services/publico/INCRA_Imóveis_Rurais/MapServer/1/query", 
-        "colunas_nome": ["CLASSE"], 
+        "colunas_nome": ["num_certif"], 
         "tipo": "poligono", # ou "linha" ou "ponto"
         "mapeamento": {
             "legenda": ["nome_imove"],
@@ -191,7 +191,7 @@ BASES_GERAIS = [
     {
         "nome": "Certificação INCRA - SIGEF", 
         "url": "https://www.pinms.ms.gov.br/arcgis/rest/services/publico/INCRA_Imóveis_Rurais/MapServer/2/query", 
-        "colunas_nome": ["CLASSE"], 
+        "colunas_nome": ["parcela_co"], 
         "tipo": "poligono", # ou "linha" ou "ponto"
         "mapeamento": {
             "legenda": ["nome_area"],
