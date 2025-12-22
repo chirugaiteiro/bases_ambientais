@@ -177,6 +177,54 @@ BASES_CLASSIFICACAO = [
 
 BASES_GERAIS = [
     {
+        "nome": "Certificação INCRA - SNCI", 
+        "url": "https://www.pinms.ms.gov.br/arcgis/rest/services/publico/INCRA_Imóveis_Rurais/MapServer/1/query", 
+        "colunas_nome": ["CLASSE"], 
+        "tipo": "poligono", # ou "linha" ou "ponto"
+        "mapeamento": {
+            "legenda": ["nome_imove"],
+            "detalhes": {
+                "Descrição": ["num_certif"],
+            }
+        }
+    },
+    {
+        "nome": "Certificação INCRA - SIGEF", 
+        "url": "https://www.pinms.ms.gov.br/arcgis/rest/services/publico/INCRA_Imóveis_Rurais/MapServer/2/query", 
+        "colunas_nome": ["CLASSE"], 
+        "tipo": "poligono", # ou "linha" ou "ponto"
+        "mapeamento": {
+            "legenda": ["nome_area"],
+            "detalhes": {
+                "Descrição": ["parcela_co"],
+            }
+        }
+    },
+    {
+        "nome": "Projetos de Assentamentos Estado de MS - Perímetros", 
+        "url": "https://www.pinms.ms.gov.br/arcgis/rest/services/SEMADESC/SEMADESC_MAPAS/MapServer/18/query", 
+        "colunas_nome": ["CLASSE"], 
+        "tipo": "poligono", # ou "linha" ou "ponto"
+        "mapeamento": {
+            "legenda": ["NOME"],
+            "detalhes": {
+                "Descrição": ["CRIACAO"],
+            }
+        }
+    },
+    {
+        "nome": "Projetos de Assentamentos Incra - Perímetros", 
+        "url": "https://www.pinms.ms.gov.br/arcgis/rest/services/SEMADESC/SEMADESC_MAPAS/MapServer/16/query", 
+        "colunas_nome": ["PA"], 
+        "tipo": "poligono", # ou "linha" ou "ponto"
+        "mapeamento": {
+            "legenda": ["PA"],
+            "detalhes": {
+                "Descrição": ["ATO"],
+            }
+        }
+    },
+    {
         "nome": "Unidades de Conservação", 
         "url": "https://www.pinms.ms.gov.br/arcgis/rest/services/IMASUL/UCs_MS_Mosaico/MapServer/0/query", 
         "colunas_nome": ["Nome UC", "NOME_UC", "NM_UC"], 
